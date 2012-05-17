@@ -7,6 +7,8 @@
  */
 
 
+#include <getopt.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -80,6 +82,11 @@ void writepoints(FILE *stream, double *gridx, double *gridy, int npoints)
   for (i=0; i<npoints; i++) fprintf(stream,"%g %g\n",gridx[i],gridy[i]);
 }
 
+static void usage(char *program_name)
+{
+    fprintf(stderr,"Usage: %s xsize ysize inputfile outputfile\n", program_name);
+    exit(1);
+}
 
 main(int argc, char *argv[])
 {
@@ -88,31 +95,71 @@ main(int argc, char *argv[])
   double **rho;          // Initial population density
   FILE *infp;
   FILE *outfp;
+  char *end_ptr;
 
   /* Read the command-line parameters and open the input and output files */
+  /* options descriptor */
+  static struct option longopts[] = {
+         { "progress", required_argument, NULL, 'p' }, /* How to display progress */
+         { "intermediate", no_argument, NULL, 'i' },   /* Store intermediate density grids */
+         { "max-h", required_argument, NULL, 'm' },   /* Cap on step size */
+         { NULL, 0, NULL, 0 }
+  };
+  options_t options = DEFAULT_OPTIONS;
+  char ch;
 
-  if (argc<5) {
-    fprintf(stderr,"Usage: %s xsize ysize inputfile outputfile\n",argv[0]);
-    exit(1);
-  }
-  xsize = atoi(argv[1]);
-  if (xsize<1) {
-    fprintf(stderr,"%s: xsize botched\n",argv[0]);
-    exit(2);
-  }
-  ysize = atoi(argv[2]);
-  if (ysize<1) {
-    fprintf(stderr,"%s: ysize botched\n",argv[0]);
-    exit(3);
-  }
-  infp = fopen(argv[3],"r");
+  while ((ch = getopt_long(argc, argv, "p:m:i", longopts, NULL)) != -1)
+    switch (ch) {
+      case 'p':
+        if (0 == strcmp("none", optarg))
+          options.progress_mode = NONE;
+        else if (0 == strcmp("normal", optarg))
+          options.progress_mode = NORMAL;
+        else if (0 == strcmp("percent", optarg))
+          options.progress_mode = PERCENT;
+        else if (0 == strcmp("detailed", optarg))
+          options.progress_mode = DETAILED;
+        else {
+          fprintf(stderr, "Unrecognised option --progress=%s\n", optarg);
+          usage(argv[0]);
+        }
+        break;
+      case 'i':
+        options.intermediate = TRUE;
+        break;
+      case 'm':
+        options.max_h = strtod(optarg, &end_ptr);
+        if (*end_ptr != '\0') {
+          fprintf(stderr, "Failed to parse number --max-h=%s\n", optarg);
+          usage(argv[0]);
+        }
+        break;
+      case 0:
+        break;
+      default:
+        usage(argv[0]);
+    }
+  
+  if (argc != optind+4) usage(argv[0]);
+  
+  xsize = atoi(argv[optind+0]);
+  if (xsize<1) usage(argv[0]);
+  
+  ysize = atoi(argv[optind+1]);
+  if (ysize<1) usage(argv[0]);
+  
+  infp = fopen(argv[optind+2],"r");
   if (infp==NULL) {
-    fprintf(stderr,"%s: unable to open file `%s'\n",argv[0],argv[3]);
+    fprintf(stderr,"%s: unable to open file '%s': ",argv[0], argv[optind+3]);
+    perror(NULL);
     exit(4);
   }
-  outfp = fopen(argv[4],"w");
+  
+  options.output_filename = argv[optind+3];
+  outfp = fopen(options.output_filename,"w");
   if (outfp==NULL) {
-    fprintf(stderr,"%s: unable to open file `%s'\n",argv[0],argv[4]);
+    fprintf(stderr,"%s: unable to open file '%s': ",argv[0],argv[optind+4]);
+    perror(NULL);
     exit(5);
   }
 
@@ -139,7 +186,7 @@ main(int argc, char *argv[])
 
   /* Make the cartogram */
 
-  cart_makecart(gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0);
+  cart_makecart(gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0,&options);
 
   /* Write out the final positions of the grid points */
 

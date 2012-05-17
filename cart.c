@@ -10,7 +10,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include <fftw3.h>
+
+#include "cart.h"
 
 /* Constants */
 
@@ -481,12 +484,52 @@ int cart_complete(double t)
   return res;
 }
 
+void write_density_grid(char *output_filename, int s, int xsize, int ysize)
+{
+  int ix, iy;
+  FILE *outfp;
+
+  outfp = fopen(output_filename, "w");
+  if (outfp==NULL) {
+    fprintf(stderr,"Failed to open file '%s': ", output_filename);
+    perror(NULL);
+    exit(6);
+  }
+  
+  fprintf(outfp, "%d %d\n", xsize, ysize);
+  for (iy=0; iy<ysize; iy++) {
+    for (ix=0; ix<xsize; ix++)
+      fprintf(outfp, "%.99g ", rhot[s][ix*ysize + iy]);
+    fprintf(outfp, "\n");
+  }
+  
+  fclose(outfp);
+}
+
+void write_displacements(char *output_filename, double *gridx, double *gridy, int npoints)
+{
+  FILE *outfp;
+  int i;
+  
+  outfp = fopen(output_filename, "w");
+  if (outfp==NULL) {
+    fprintf(stderr,"Failed to open file '%s': ", output_filename);
+    perror(NULL);
+    exit(6);
+  }
+  
+  for (i=0; i<npoints; i++)
+    fprintf(outfp, "%g %g\n", gridx[i], gridy[i]);
+  
+  fclose(outfp);
+}
+
 
 /* Function to do the transformation of the given set of points
  * to the cartogram */
 
 void cart_makecart(double *pointx, double *pointy, int npoints,
-		   int xsize, int ysize, double blur)
+		   int xsize, int ysize, double blur, options_t *options)
 {
   int i;
   int s,sp;
@@ -494,7 +537,8 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
   int done;
   double t,h;
   double error,dr;
-  double desiredratio;
+  double desiredratio, chosenratio;
+  char output_filename[strlen(options->output_filename)+5];
 
   /* Calculate the initial density and velocity for snapshot zero */
 
@@ -524,28 +568,54 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
      * the two-step process is twice the target for an individual step */
 
     desiredratio = pow(2*TARGETERROR/error,0.2);
-    if (desiredratio>MAXRATIO) h *= MAXRATIO;
-    else h *= desiredratio;
+    if (desiredratio>MAXRATIO) chosenratio = MAXRATIO;
+    else chosenratio = desiredratio;
+    
+    if (h * chosenratio <= options->max_h)
+      h *= chosenratio;
+    else
+      printf("h * chosenratio = %g, which is > max_h = %g\n", h * chosenratio, options->max_h);
 
     done = cart_complete(t);
-#ifdef PERCENT
-    fprintf(stdout,"%i\n",done);
-#endif
-#ifndef NOPROGRESS
-    fprintf(stderr,"  %3i%%  |",done);
-    for (i=0; i<done/2; i++) fprintf(stderr,"=");
-    for (i=done/2; i<50; i++) fprintf(stderr," ");
-    fprintf(stderr,"|\r");
-#endif
+    switch (options->progress_mode) {
+      case NORMAL:
+        fprintf(stderr,"  %3i%%  |",done);
+        for (i=0; i<done/2; i++) fprintf(stderr,"=");
+        for (i=done/2; i<50; i++) fprintf(stderr," ");
+        fprintf(stderr,"|\r");
+        break;
+      case PERCENT:
+        fprintf(stdout,"%i\n",done);
+        break;
+      case DETAILED:
+        printf("step=%d, t=%g, h=%g, done=%d%%\n", step, t, h, done);
+        break;
+    }
+    
+    if (options->intermediate) {
+      sprintf(output_filename, "%s.%d", options->output_filename, step-1);
+      printf("Writing intermediate grid to %s...\n", output_filename);
+      write_density_grid(output_filename, (s+3)%5, xsize, ysize);
+      
+      sprintf(output_filename, "%s.%d", options->output_filename, step);
+      printf("Writing intermediate grid to %s...\n", output_filename);
+      write_density_grid(output_filename, s%5, xsize, ysize);
+      
+      sprintf(output_filename, "%s.d%d", options->output_filename, step);
+      printf("Writing intermediate displacements to %s...\n", output_filename);
+      write_displacements(output_filename,pointx,pointy,npoints);
+    }
 
     /* If no point moved then we are finished */
 
   } while (dr>0.0);
 
-#ifdef PERCENT
-  fprintf(stdout,"\n");
-#endif
-#ifndef NOPROGRESS
-  fprintf(stderr,"  100%%  |==================================================|\n");
-#endif
+  switch (options->progress_mode) {
+    case PERCENT:
+      fprintf(stdout,"\n");
+      break;
+    case NORMAL:
+      fprintf(stderr,"  100%%  |==================================================|\n");
+      break;
+  }
 }
