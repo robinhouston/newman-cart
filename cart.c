@@ -484,7 +484,8 @@ int cart_complete(double t)
   return res;
 }
 
-void write_density_grid(char *output_filename, int s, int xsize, int ysize)
+void write_density_grid(char *output_filename, int s, int xsize, int ysize,
+                        double t, double h)
 {
   int ix, iy;
   FILE *outfp;
@@ -496,7 +497,9 @@ void write_density_grid(char *output_filename, int s, int xsize, int ysize)
     exit(6);
   }
   
-  fprintf(outfp, "%d %d\n", xsize, ysize);
+  fprintf(outfp, "{\"width\": %d, \"height\": %d, \"t\": %g, \"h\": %g, \"done_percent\": %d}\n",
+    xsize, ysize, t, h, cart_complete(t));
+  
   for (iy=0; iy<ysize; iy++) {
     for (ix=0; ix<xsize; ix++)
       fprintf(outfp, "%.99g ", rhot[s][ix*ysize + iy]);
@@ -535,7 +538,7 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
   int s,sp;
   int step;
   int done;
-  double t,h;
+  double t,h,prev_h;
   double error,dr;
   double desiredratio, chosenratio;
   char output_filename[strlen(options->output_filename)+5];
@@ -571,6 +574,7 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
     if (desiredratio>MAXRATIO) chosenratio = MAXRATIO;
     else chosenratio = desiredratio;
     
+    prev_h = h;
     if (h * chosenratio <= options->max_h)
       h *= chosenratio;
     else
@@ -595,11 +599,11 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
     if (options->intermediate) {
       sprintf(output_filename, "%s.%d", options->output_filename, step-1);
       printf("Writing intermediate grid to %s...\n", output_filename);
-      write_density_grid(output_filename, (s+3)%5, xsize, ysize);
+      write_density_grid(output_filename, (s+3)%5, xsize, ysize, t-prev_h, prev_h);
       
       sprintf(output_filename, "%s.%d", options->output_filename, step);
       printf("Writing intermediate grid to %s...\n", output_filename);
-      write_density_grid(output_filename, s%5, xsize, ysize);
+      write_density_grid(output_filename, s%5, xsize, ysize, t, h);
       
       sprintf(output_filename, "%s.d%d", options->output_filename, step);
       printf("Writing intermediate displacements to %s...\n", output_filename);
