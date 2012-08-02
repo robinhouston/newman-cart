@@ -140,6 +140,9 @@ main(int argc, char *argv[])
         usage(argv[0]);
     }
   
+  if ( !isatty(stdout) )
+    setbuf(stdout,NULL);
+  
   if (argc != optind+4) usage(argv[0]);
   
   xsize = atoi(argv[optind+0]);
