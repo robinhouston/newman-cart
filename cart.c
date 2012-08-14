@@ -17,7 +17,7 @@
 
 /* Constants */
 
-#define INITH 1.0e-12        // Initial size of a time-step
+#define INITH 1.0e-24        // Initial size of a time-step
 #define TARGETERROR 0.01     // Desired accuracy per step in pixels
 #define MAXRATIO 4.0         // Max ratio to increase step size by
 #define EXPECTEDTIME 1.0e8   // Guess as to the time it will take, used to
