@@ -140,7 +140,7 @@ main(int argc, char *argv[])
         usage(argv[0]);
     }
   
-  if ( !isatty(stdout) )
+  if ( !isatty(1) )
     setbuf(stdout,NULL);
   
   if (argc != optind+4) usage(argv[0]);
