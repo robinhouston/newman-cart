@@ -17,8 +17,9 @@
 
 /* Constants */
 
-#define INITH 1.0e-24        // Initial size of a time-step
+#define INITH 0.01           // Initial size of a time-step
 #define TARGETERROR 0.01     // Desired accuracy per step in pixels
+#define MAXERROR 0.5         // Maximum permissible error
 #define MAXRATIO 4.0         // Max ratio to increase step size by
 #define EXPECTEDTIME 1.0e8   // Guess as to the time it will take, used to
                              // estimate completion
@@ -541,7 +542,11 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
   double t,h,prev_h;
   double error,dr;
   double desiredratio, chosenratio;
+  double *pointx_copy, *pointy_copy;
   char output_filename[strlen(options->output_filename)+5];
+
+  pointx_copy = malloc(npoints * sizeof(double));
+  pointy_copy = malloc(npoints * sizeof(double));
 
   /* Calculate the initial density and velocity for snapshot zero */
 
@@ -559,7 +564,17 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
 
     /* Do a combined (triple) integration step */
 
+    memcpy(pointx_copy, pointx, npoints * sizeof(double));
+    memcpy(pointy_copy, pointy, npoints * sizeof(double));
     cart_twosteps(pointx,pointy,npoints,t,h,s,xsize,ysize,&error,&dr,&sp);
+
+    while(error > MAXERROR) {
+      h /= 2;
+    
+      memcpy(pointx, pointx_copy, npoints * sizeof(double));
+      memcpy(pointy, pointy_copy, npoints * sizeof(double));
+      cart_twosteps(pointx,pointy,npoints,t,h,s,xsize,ysize,&error,&dr,&sp);
+    }
 
     /* Increase the time by 2h and rotate snapshots */
 
@@ -622,4 +637,7 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
       fprintf(stderr,"  100%%  |==================================================|\n");
       break;
   }
+  
+  free(pointx_copy);
+  free(pointy_copy);
 }
