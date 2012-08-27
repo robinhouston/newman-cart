@@ -570,6 +570,8 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
 
     while(error > MAXERROR) {
       h /= 2;
+      if (options->progress_mode == DETAILED)
+        printf("dr = %g and error = %g, so retrying with h = %g\n", dr, error, h);
     
       memcpy(pointx, pointx_copy, npoints * sizeof(double));
       memcpy(pointy, pointy_copy, npoints * sizeof(double));
@@ -607,7 +609,7 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
         fprintf(stdout,"%i\n",done);
         break;
       case DETAILED:
-        printf("step=%d, t=%g, h=%g, done=%d%%\n", step, t, h, done);
+        printf("step=%d, t=%g, h=%g, dr=%g, error=%g, done=%d%%\n", step, t, h, dr, error, done);
         break;
     }
     
