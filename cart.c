@@ -17,9 +17,9 @@
 
 /* Constants */
 
-#define INITH 0.01           // Initial size of a time-step
+#define INITH 0.001          // Initial size of a time-step
 #define TARGETERROR 0.01     // Desired accuracy per step in pixels
-#define MAXERROR 0.5         // Maximum permissible error
+#define MAXERROR +INFINITY   // Maximum permissible error
 #define MAXRATIO 4.0         // Max ratio to increase step size by
 #define EXPECTEDTIME 1.0e8   // Guess as to the time it will take, used to
                              // estimate completion
@@ -533,7 +533,7 @@ void write_displacements(char *output_filename, double *gridx, double *gridy, in
  * to the cartogram */
 
 void cart_makecart(double *pointx, double *pointy, int npoints,
-		   int xsize, int ysize, double blur, options_t *options)
+		   int xsize, int ysize, options_t *options)
 {
   int i;
   int s,sp;
@@ -557,7 +557,7 @@ void cart_makecart(double *pointx, double *pointy, int npoints,
   /* Now integrate the points in the polygons */
 
   step = 0;
-  t = 0.5*blur*blur;
+  t = 0.5*options->blur*options->blur;
   h = INITH;
 
   do {

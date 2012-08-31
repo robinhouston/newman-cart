@@ -16,9 +16,10 @@ typedef struct {
   progress_mode_t progress_mode;
   int intermediate;
   char *output_filename;
+  double blur;
   double max_h;
 } options_t;
-#define DEFAULT_OPTIONS { NORMAL, FALSE, NULL, INFINITY }
+#define DEFAULT_OPTIONS { NORMAL, FALSE, NULL, 0.0, INFINITY }
 
 double** cart_dmalloc(int xsize, int ysize);
 void cart_dfree(double **userrho);
@@ -26,6 +27,6 @@ void cart_makews(int xsize, int ysize);
 void cart_freews(int xsize, int ysize);
 void cart_transform(double **userrho, int xsize, int ysize);
 void cart_makecart(double *pointx, double *pointy, int npoints,
-		   int xsize, int ysize, double blur, options_t *options);
+		   int xsize, int ysize, options_t *options);
 
 #endif

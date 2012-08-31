@@ -102,7 +102,8 @@ main(int argc, char *argv[])
   static struct option longopts[] = {
          { "progress", required_argument, NULL, 'p' }, /* How to display progress */
          { "intermediate", no_argument, NULL, 'i' },   /* Store intermediate density grids */
-         { "max-h", required_argument, NULL, 'm' },   /* Cap on step size */
+         { "blur", required_argument, NULL, 'b' },     /* Blur */
+         { "max-h", required_argument, NULL, 'm' },    /* Cap on step size */
          { NULL, 0, NULL, 0 }
   };
   options_t options = DEFAULT_OPTIONS;
@@ -126,6 +127,13 @@ main(int argc, char *argv[])
         break;
       case 'i':
         options.intermediate = TRUE;
+        break;
+      case 'b':
+        options.blur = strtod(optarg, &end_ptr);
+        if (*end_ptr != '\0') {
+          fprintf(stderr, "Failed to parse number --blur=%s\n", optarg);
+          usage(argv[0]);
+        }
         break;
       case 'm':
         options.max_h = strtod(optarg, &end_ptr);
@@ -189,7 +197,7 @@ main(int argc, char *argv[])
 
   /* Make the cartogram */
 
-  cart_makecart(gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,0.0,&options);
+  cart_makecart(gridx,gridy,(xsize+1)*(ysize+1),xsize,ysize,&options);
 
   /* Write out the final positions of the grid points */
 
